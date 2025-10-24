@@ -1,0 +1,54 @@
+{
+  "name": "scanitknowit",
+  "version": "1.0.0",
+  "description": "A Google Lens-style product scanner that identifies objects/products from camera capture or image upload",
+  "keywords": [
+    "scanner",
+    "product-identification",
+    "qr-code",
+    "ocr",
+    "object-recognition",
+    "camera",
+    "image-processing",
+    "react",
+    "vite"
+  ],
+  "homepage": "https://github.com/jahnavitry-tech/Scanitknowit#readme",
+  "bugs": {
+    "url": "https://github.com/jahnavitry-tech/Scanitknowit/issues"
+  },
+  "license": "MIT",
+  "author": "jahnavitry-tech",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/jahnavitry-tech/Scanitknowit.git"
+  },
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview",
+    "start-api": "node api/analyze.js",
+    "start": "concurrently \"npm run start-api\" \"npm run dev\"",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "dependencies": {
+    "axios": "^1.6.0",
+    "jsqr": "^1.4.0",
+    "react": "^18.2.0",
+    "react-dom": "^18.2.0",
+    "tesseract.js": "^4.1.3",
+    "express": "^4.18.2",
+    "express-fileupload": "^1.4.0",
+    "sharp": "^0.32.1"
+  },
+  "devDependencies": {
+    "@vitejs/plugin-react": "^4.0.0",
+    "vite": "^5.0.0",
+    "concurrently": "^8.0.0"
+  },
+  "engines": {
+    "node": ">=14.0.0"
+  }
+}
