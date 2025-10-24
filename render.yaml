@@ -1,0 +1,9 @@
+services:
+  - type: web
+    name: scanitknowit-api
+    env: node
+    buildCommand: npm install
+    startCommand: node api/analyze.js
+    envVars:
+      - key: PORT
+        value: 10000
