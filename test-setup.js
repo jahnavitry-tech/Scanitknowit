@@ -20,6 +20,13 @@ const requiredFiles = [
   '.gitignore'
 ];
 
+// Additional files for deployment
+const deploymentFiles = [
+  'DEPLOYMENT.md',
+  'deploy.sh',
+  'deploy.bat'
+];
+
 let allFilesExist = true;
 console.log('📁 Checking required files:');
 requiredFiles.forEach(file => {
@@ -28,6 +35,15 @@ requiredFiles.forEach(file => {
   } else {
     console.log(`  ❌ ${file} (MISSING)`);
     allFilesExist = false;
+  }
+});
+
+console.log('\n📁 Checking deployment files:');
+deploymentFiles.forEach(file => {
+  if (fs.existsSync(file)) {
+    console.log(`  ✅ ${file}`);
+  } else {
+    console.log(`  ❌ ${file} (MISSING)`);
   }
 });
 
@@ -42,6 +58,11 @@ if (allFilesExist) {
   console.log('   2a. Start the backend: npm run start-api');
   console.log('   2b. Start the frontend: npm run dev');
   console.log('   3. Open http://localhost:5173 in your browser');
+  
+  console.log('\n📦 To deploy to GitHub:');
+  console.log('   - On Windows: Run deploy.bat');
+  console.log('   - On macOS/Linux: Run deploy.sh');
+  console.log('   - Or follow instructions in DEPLOYMENT.md');
 } else {
   console.log('❌ Some required files are missing.');
   console.log('Please make sure all files are in place before running the application.');
