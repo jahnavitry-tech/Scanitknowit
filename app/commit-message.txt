@@ -1,0 +1,21 @@
+feat: Implement Google Lens-style product scanner with multi-method recognition
+
+This commit adds a complete product scanning solution that combines:
+- QR code detection with jsQR (0.99 confidence for detected codes)
+- OCR text extraction using Tesseract.js
+- Object recognition with MobileNet via TensorFlow.js
+- Optional image captioning through Hugging Face BLIP API
+- Camera capture with torch support
+- File upload functionality
+- Ranked results display with confidence bars
+
+The implementation includes:
+- CameraPanel component for live camera capture and file uploads
+- AnalysisPanel component for displaying ranked results
+- App component for state management
+- API endpoint with multipart/form-data handling
+- Proper error handling and loading states
+- Vercel deployment configuration
+- Comprehensive deployment documentation
+
+All recognition methods run in parallel for optimal performance, and results are merged and ranked by confidence. The frontend displays results with clear source identification and confidence indicators.

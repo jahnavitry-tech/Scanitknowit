@@ -1,0 +1,33 @@
+name: CI
+
+on: [push, pull_request]
+
+jobs:
+  build-and-test:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        node-version: [18.x]
+    steps:
+      - uses: actions/checkout@v4
+      - name: Use Node.js ${{ matrix.node-version }}
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node-version }}
+      - name: Install frontend deps
+        run: |
+          cd app
+          npm ci
+      - name: Run frontend unit tests
+        run: |
+          cd app
+          npm test
+      - name: Build frontend
+        run: |
+          cd app
+          npm run build
+      - name: Lint/Typecheck (worker)
+        run: |
+          cd worker
+          npm ci
+          npx tsc --noEmit

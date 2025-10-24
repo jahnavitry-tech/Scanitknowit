@@ -1,0 +1,16 @@
+{
+  "name": "scan-it-know-it-worker",
+  "main": "src/index.ts",
+  "compatibility_date": "2025-10-22",
+  "workers_dev": true,
+  "kv_namespaces": [
+    {
+      "binding": "CARD_CACHE",
+      "id": "${CARD_CACHE_NAMESPACE}"
+    }
+  ],
+  "vars": {
+    "OPENROUTER_API_KEY": "",
+    "API_NINJAS_KEY": ""
+  }
+}

@@ -1,0 +1,402 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Scan It Know It - Final Test</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gray-100 dark:bg-gray-900 text-gray-900 dark:text-gray-100 min-h-screen">
+    <div class="container mx-auto p-6">
+        <h1 class="text-3xl font-bold mb-6">🧃 Scan It Know It - Final Test</h1>
+        
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+            <!-- Camera Panel -->
+            <div class="lg:col-span-1 space-y-4">
+                <div class="text-sm text-gray-500">Live Camera</div>
+                <div class="rounded-3xl p-5 bg-white dark:bg-[#061022] shadow-lg">
+                    <div class="space-y-4">
+                        <div class="bg-black/5 dark:bg-white/3 rounded-xl overflow-hidden">
+                            <div class="w-full h-64 object-cover bg-black flex items-center justify-center text-white">
+                                Camera Preview
+                            </div>
+                        </div>
+
+                        <div class="flex gap-3">
+                            <button id="takePhoto" class="flex-1 flex items-center justify-center gap-2 px-4 py-3 rounded-xl bg-gradient-to-r from-purple-600 to-indigo-600 text-white">
+                                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                                    <path fill-rule="evenodd" d="M4 5a2 2 0 00-2 2v8a2 2 0 002 2h12a2 2 0 002-2V7a2 2 0 00-2-2h-1.586a1 1 0 01-.707-.293l-1.121-1.121A2 2 0 0011.172 3H8.828a2 2 0 00-1.414.586L6.293 4.707A1 1 0 015.586 5H4zm6 9a3 3 0 100-6 3 3 0 000 6z" clip-rule="evenodd" />
+                                </svg>
+                                Take Photo
+                            </button>
+
+                            <label class="px-4 py-3 border rounded-xl cursor-pointer flex items-center">
+                                <input id="uploadInput" type="file" accept="image/*" class="hidden" />
+                                Upload
+                            </label>
+
+                            <button id="switchCamera" class="px-3 py-3 border rounded-xl">
+                                Switch
+                            </button>
+                        </div>
+
+                        <div id="processing" class="text-sm text-gray-500 hidden">Processing image…</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Analysis Panel -->
+            <div class="lg:col-span-2">
+                <div class="flex items-center justify-between mb-4">
+                    <h1 class="text-2xl font-bold">🧃 Scan It Know It</h1>
+                    <div class="text-sm text-gray-500">Light / Dark toggle (manual)</div>
+                </div>
+                <div class="rounded-3xl p-6 bg-transparent">
+                    <div id="analysisPanel" class="space-y-4 hidden">
+                        <div class="p-4 rounded-2xl bg-gradient-to-br from-white to-slate-50 dark:from-slate-900 dark:to-slate-800 shadow">
+                            <div class="flex items-start gap-4">
+                                <div class="w-28 h-28 object-contain rounded-lg border bg-white/30 flex items-center justify-center">
+                                    <span id="productImage">🍫</span>
+                                </div>
+                                <div class="flex-1">
+                                    <h3 id="productName" class="text-2xl font-semibold">Unknown Product</h3>
+                                    <p id="productSummary" class="mt-2 text-sm text-gray-600 dark:text-gray-300 whitespace-pre-line">Five-line summary will appear here.</p>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="grid gap-3">
+                            <!-- Card 1 - Ingredients -->
+                            <div class="rounded-2xl overflow-hidden border border-gray-200 dark:border-slate-700 bg-white dark:bg-[#071421] shadow-sm transition-all duration-300 ease-in-out">
+                                <button class="w-full flex items-center justify-between px-5 py-4 hover:bg-gray-50 dark:hover:bg-slate-800 transition-colors duration-200" data-card="ingredients">
+                                    <div class="text-sm font-medium">What are the Ingredients?</div>
+                                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                                        <path fill-rule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clip-rule="evenodd" />
+                                    </svg>
+                                </button>
+                                <div style="max-height: 0px;" class="px-5 transition-all duration-300 ease-in-out overflow-hidden">
+                                    <div class="pb-5">
+                                        <pre id="ingredientsContent" class="whitespace-pre-wrap text-sm">Loading...</pre>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Card 2 - Calories -->
+                            <div class="rounded-2xl overflow-hidden border border-gray-200 dark:border-slate-700 bg-white dark:bg-[#071421] shadow-sm transition-all duration-300 ease-in-out">
+                                <button class="w-full flex items-center justify-between px-5 py-4 hover:bg-gray-50 dark:hover:bg-slate-800 transition-colors duration-200" data-card="calories">
+                                    <div class="text-sm font-medium">How about calories?</div>
+                                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                                        <path fill-rule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clip-rule="evenodd" />
+                                    </svg>
+                                </button>
+                                <div style="max-height: 0px;" class="px-5 transition-all duration-300 ease-in-out overflow-hidden">
+                                    <div class="pb-5">
+                                        <pre id="caloriesContent" class="whitespace-pre-wrap text-sm">Loading...</pre>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Card 3 - Reddit -->
+                            <div class="rounded-2xl overflow-hidden border border-gray-200 dark:border-slate-700 bg-white dark:bg-[#071421] shadow-sm transition-all duration-300 ease-in-out">
+                                <button class="w-full flex items-center justify-between px-5 py-4 hover:bg-gray-50 dark:hover:bg-slate-800 transition-colors duration-200" data-card="reddit">
+                                    <div class="text-sm font-medium">Reddit reviews</div>
+                                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                                        <path fill-rule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clip-rule="evenodd" />
+                                    </svg>
+                                </button>
+                                <div style="max-height: 0px;" class="px-5 transition-all duration-300 ease-in-out overflow-hidden">
+                                    <div class="pb-5">
+                                        <div id="redditContent" class="space-y-2 text-sm">
+                                            Loading...
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Card 4 - Q&A -->
+                            <div class="rounded-2xl overflow-hidden border border-gray-200 dark:border-slate-700 bg-white dark:bg-[#071421] shadow-sm transition-all duration-300 ease-in-out">
+                                <button class="w-full flex items-center justify-between px-5 py-4 hover:bg-gray-50 dark:hover:bg-slate-800 transition-colors duration-200" data-card="qa">
+                                    <div class="text-sm font-medium">Q&A</div>
+                                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                                        <path fill-rule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clip-rule="evenodd" />
+                                    </svg>
+                                </button>
+                                <div style="max-height: 0px;" class="px-5 transition-all duration-300 ease-in-out overflow-hidden">
+                                    <div class="pb-5">
+                                        <div>
+                                            <div class="mb-3">
+                                                <input id="qaInput" placeholder="Ask about this product..." class="w-full px-3 py-2 rounded border bg-transparent" />
+                                            </div>
+                                            <div class="flex gap-2">
+                                                <button id="qaButton" class="px-4 py-2 rounded bg-indigo-600 text-white">Ask</button>
+                                            </div>
+                                            <div id="qaAnswers" class="mt-3 space-y-2">
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Welcome message when no product is identified -->
+                    <div id="welcomeMessage" class="text-center py-12">
+                        <div class="text-5xl mb-4">📸</div>
+                        <h2 class="text-2xl font-bold mb-2">Scan a Product</h2>
+                        <p class="text-gray-600 dark:text-gray-400">Take a photo or upload an image of a product to get started</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Track active card
+        let activeCard = null;
+        
+        // Simulate OCR text
+        let ocrText = "";
+        
+        // Simulate product data
+        let productData = {
+            product: "Unknown Product",
+            summary: "Five-line summary will appear here."
+        };
+        
+        // Card content cache
+        const cardCache = {};
+        
+        // Toggle card open/close
+        function toggleCard(cardType) {
+            const button = document.querySelector(`[data-card="${cardType}"]`);
+            const card = button.closest('.rounded-2xl');
+            const content = card.querySelector('div[style]');
+            const chevron = button.querySelector('svg');
+            
+            // If clicking the same card, close it
+            if (activeCard === cardType) {
+                content.style.maxHeight = '0px';
+                chevron.style.transform = 'rotate(0deg)';
+                activeCard = null;
+                return;
+            }
+            
+            // Close previously open card
+            if (activeCard) {
+                const prevButton = document.querySelector(`[data-card="${activeCard}"]`);
+                const prevCard = prevButton.closest('.rounded-2xl');
+                const prevContent = prevCard.querySelector('div[style]');
+                const prevChevron = prevButton.querySelector('svg');
+                prevContent.style.maxHeight = '0px';
+                prevChevron.style.transform = 'rotate(0deg)';
+            }
+            
+            // Open new card
+            content.style.maxHeight = content.scrollHeight + 'px';
+            chevron.style.transform = 'rotate(180deg)';
+            activeCard = cardType;
+            
+            // Fetch data for the card if not already cached
+            fetchCardData(cardType);
+        }
+        
+        // Fetch card data
+        async function fetchCardData(cardType) {
+            // If already cached, don't fetch again
+            if (cardCache[cardType]) {
+                updateCardContent(cardType, cardCache[cardType]);
+                return;
+            }
+            
+            // Show loading state
+            const contentElement = document.getElementById(`${cardType}Content`);
+            if (contentElement) {
+                contentElement.textContent = 'Loading...';
+            }
+            
+            try {
+                // Simulate API calls based on card type
+                let data;
+                switch (cardType) {
+                    case 'ingredients':
+                        data = "MILK CHOCOLATE (SUGAR; MILK; CHOCOLATE; COCOA BUTTER; LACTOSE; MILK FAT; SOY LECITHIN; PGPR, EMULSIFIER; VANILLIN, ARTIFICIAL FLAVOR)";
+                        break;
+                    case 'calories':
+                        data = JSON.stringify({
+                            "food": "Hershey's Milk Chocolate Bar",
+                            "nutrition": [
+                                {
+                                    "name": "Hershey's Milk Chocolate Bar",
+                                    "calories": 210,
+                                    "serving_size_g": 43,
+                                    "fat_total_g": 13,
+                                    "fat_saturated_g": 8,
+                                    "protein_g": 3,
+                                    "sodium_mg": 35,
+                                    "potassium_mg": 170,
+                                    "cholesterol_mg": 10,
+                                    "carbohydrates_total_g": 26,
+                                    "fiber_g": 1,
+                                    "sugar_g": 24
+                                }
+                            ]
+                        }, null, 2);
+                        break;
+                    case 'reddit':
+                        data = [
+                            { title: "Hershey's Chocolate Bar Review", url: "https://reddit.com/r/food/comments/12345" },
+                            { title: "Best Chocolate Bars for 2025", url: "https://reddit.com/r/food/comments/67890" }
+                        ];
+                        break;
+                    case 'qa':
+                        data = "Welcome! Ask a question below.";
+                        break;
+                    default:
+                        data = "No data available";
+                }
+                
+                // Cache the data
+                cardCache[cardType] = data;
+                
+                // Update card content
+                updateCardContent(cardType, data);
+            } catch (error) {
+                console.error(`Error fetching ${cardType}:`, error);
+                updateCardContent(cardType, 'Error loading data');
+            }
+        }
+        
+        // Update card content
+        function updateCardContent(cardType, data) {
+            if (cardType === 'reddit') {
+                const redditContent = document.getElementById('redditContent');
+                if (Array.isArray(data)) {
+                    redditContent.innerHTML = data.map(post => 
+                        `<div><a class="text-indigo-600" href="${post.url}" target="_blank">${post.title}</a></div>`
+                    ).join('');
+                } else {
+                    redditContent.innerHTML = `<div>${data}</div>`;
+                }
+            } else if (cardType === 'qa') {
+                // Q&A content is handled separately
+            } else {
+                const contentElement = document.getElementById(`${cardType}Content`);
+                if (contentElement) {
+                    contentElement.textContent = data;
+                }
+            }
+        }
+        
+        // Simulate product identification
+        async function identifyProduct(text) {
+            try {
+                // Show processing state
+                document.getElementById('processing').classList.remove('hidden');
+                
+                // Simulate API call to identify product
+                const response = await fetch('http://127.0.0.1:8787/api/identify', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ text: text })
+                });
+                
+                if (response.ok) {
+                    const data = await response.json();
+                    productData = {
+                        product: data.product || "Unknown Product",
+                        summary: data.summary || "No summary available."
+                    };
+                    
+                    // Update UI
+                    document.getElementById('productName').textContent = productData.product;
+                    document.getElementById('productSummary').textContent = productData.summary;
+                    document.getElementById('analysisPanel').classList.remove('hidden');
+                    document.getElementById('welcomeMessage').classList.add('hidden');
+                    
+                    // Reset card cache when new product is identified
+                    Object.keys(cardCache).forEach(key => delete cardCache[key]);
+                    
+                    // Reset active card
+                    activeCard = null;
+                } else {
+                    throw new Error('Failed to identify product');
+                }
+            } catch (error) {
+                console.error('Error identifying product:', error);
+                productData = {
+                    product: "Error identifying product",
+                    summary: "Please try again."
+                };
+                
+                // Update UI
+                document.getElementById('productName').textContent = productData.product;
+                document.getElementById('productSummary').textContent = productData.summary;
+                document.getElementById('analysisPanel').classList.remove('hidden');
+                document.getElementById('welcomeMessage').classList.add('hidden');
+            } finally {
+                document.getElementById('processing').classList.add('hidden');
+            }
+        }
+        
+        // Simulate OCR text extraction
+        function simulateOCR(text) {
+            ocrText = text;
+            identifyProduct(ocrText);
+        }
+        
+        // Event listeners
+        document.addEventListener('DOMContentLoaded', function() {
+            // Card toggle buttons
+            document.querySelectorAll('[data-card]').forEach(button => {
+                button.addEventListener('click', function() {
+                    const cardType = this.getAttribute('data-card');
+                    toggleCard(cardType);
+                });
+            });
+            
+            // Take photo button
+            document.getElementById('takePhoto').addEventListener('click', function() {
+                // Simulate taking a photo and performing OCR
+                simulateOCR("Hershey's Milk Chocolate Bar\nNutrition Facts\nServing Size 1 Bar (43g)\nCalories 210\nTotal Fat 13g\nSaturated Fat 8g\nCholesterol 10mg\nSodium 35mg\nTotal Carbohydrate 26g\nSugars 24g\nProtein 3g\nIngredients: Milk Chocolate (Sugar; Milk; Chocolate; Cocoa Butter; Lactose; Milk Fat; Soy Lecithin; PGPR, Emulsifier; Vanillin, Artificial Flavor)");
+            });
+            
+            // Upload input
+            document.getElementById('uploadInput').addEventListener('change', function(e) {
+                const file = e.target.files[0];
+                if (file) {
+                    // Simulate file upload and OCR
+                    simulateOCR("Hershey's Milk Chocolate Bar\nNutrition Facts\nServing Size 1 Bar (43g)\nCalories 210\nTotal Fat 13g\nSaturated Fat 8g\nCholesterol 10mg\nSodium 35mg\nTotal Carbohydrate 26g\nSugars 24g\nProtein 3g\nIngredients: Milk Chocolate (Sugar; Milk; Chocolate; Cocoa Butter; Lactose; Milk Fat; Soy Lecithin; PGPR, Emulsifier; Vanillin, Artificial Flavor)");
+                }
+            });
+            
+            // Switch camera button
+            document.getElementById('switchCamera').addEventListener('click', function() {
+                // Simulate switching camera
+                alert('Switching camera...');
+            });
+            
+            // Q&A functionality
+            document.getElementById('qaButton').addEventListener('click', function() {
+                const question = document.getElementById('qaInput').value;
+                if (question) {
+                    const answersContainer = document.getElementById('qaAnswers');
+                    const answerElement = document.createElement('div');
+                    answerElement.className = 'p-3 bg-white/50 rounded text-sm';
+                    answerElement.textContent = `This is a simulated answer to your question: "${question}"`;
+                    answersContainer.insertBefore(answerElement, answersContainer.firstChild);
+                    document.getElementById('qaInput').value = '';
+                }
+            });
+            
+            // Allow Enter key to submit Q&A
+            document.getElementById('qaInput').addEventListener('keydown', function(e) {
+                if (e.key === 'Enter') {
+                    document.getElementById('qaButton').click();
+                }
+            });
+        });
+    </script>
+</body>
+</html>

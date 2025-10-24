@@ -1,0 +1,28 @@
+{
+  "name": "my-lens-scanner",
+  "version": "1.0.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview",
+    "api": "node api/analyze.js"
+  },
+  "dependencies": {
+    "react": "^18.2.0",
+    "react-dom": "^18.2.0",
+    "tesseract.js": "^4.1.1",
+    "jsqr": "^1.4.0",
+    "@tensorflow/tfjs-node": "^4.9.0",
+    "@tensorflow-models/mobilenet": "^2.2.1",
+    "express": "^4.18.2",
+    "formidable": "^3.5.3",
+    "node-fetch": "^3.3.2",
+    "dotenv": "^16.3.1",
+    "sharp": "^0.32.0"
+  },
+  "devDependencies": {
+    "@vitejs/plugin-react": "^4.0.0",
+    "vite": "^5.0.0"
+  }
+}

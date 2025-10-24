@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Enhanced Yuka-Inspired Camera Demo</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gray-50 min-h-screen p-4">
+    <div class="max-w-md mx-auto">
+        <h1 class="text-2xl font-bold text-center my-6">Enhanced Yuka-Inspired Camera</h1>
+        
+        <div class="bg-white rounded-xl shadow-md p-4">
+            <div class="relative bg-black/5 rounded-xl overflow-hidden mb-4">
+                <!-- Video placeholder -->
+                <div class="w-full h-64 bg-gray-800 flex items-center justify-center">
+                    <div class="text-white text-center">
+                        <div class="text-4xl mb-2">📷</div>
+                        <p>Camera Preview</p>
+                    </div>
+                </div>
+                
+                <!-- Overlay Guide -->
+                <div class="absolute top-1/4 left-1/10 w-4/5 h-1/2 border-2 border-dashed border-indigo-400 rounded-md pointer-events-none">
+                    <!-- Animated Scan Line -->
+                    <div class="absolute top-0 left-0 w-full h-1 bg-indigo-400" style="animation: scan 2s linear infinite;"></div>
+                </div>
+            </div>
+            
+            <div class="flex gap-3">
+                <button class="flex-1 flex items-center justify-center gap-2 px-4 py-3 rounded-xl bg-gradient-to-r from-purple-600 to-indigo-600 text-white">
+                    <svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M3 7h2l2-2h6l2 2h2v12H3z" stroke-width="1.5"/><circle cx="12" cy="13" r="3.25" stroke-width="1.5"/></svg>
+                    Take Photo
+                </button>
+                
+                <button class="px-4 py-3 border rounded-xl">
+                    Upload
+                </button>
+                
+                <button class="px-3 py-3 border rounded-xl">
+                    Switch
+                </button>
+                
+                <button class="px-3 py-3 border rounded-xl bg-yellow-500 text-white">
+                    🔦
+                </button>
+                
+                <button class="px-3 py-3 border rounded-xl bg-green-500 text-white">
+                    AUTO
+                </button>
+            </div>
+            
+            <div class="mt-4 text-sm text-gray-500 text-center">
+                Processing image…
+            </div>
+        </div>
+        
+        <div class="mt-6 bg-white rounded-xl shadow-md p-4">
+            <h2 class="text-lg font-semibold mb-2">Features</h2>
+            <ul class="list-disc pl-5 space-y-1 text-sm text-gray-700">
+                <li>Live camera preview with environment mode</li>
+                <li>Overlay guide for product alignment</li>
+                <li>Animated scan line for visual feedback</li>
+                <li>Torch/flash toggle for low-light conditions</li>
+                <li>Auto-capture mode (every 3 seconds)</li>
+                <li>Object recognition fallback using MobileNet</li>
+                <li>OCR + object recognition hybrid approach</li>
+            </ul>
+        </div>
+    </div>
+    
+    <style>
+        @keyframes scan {
+            0% { top: 0; }
+            50% { top: 100%; }
+            100% { top: 0; }
+        }
+    </style>
+</body>
+</html>
