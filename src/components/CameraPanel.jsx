@@ -47,7 +47,9 @@ export default function CameraPanel({ onResult }) {
     try {
       const formData = new FormData();
       formData.append('image', file);
-      const res = await axios.post('/api/analyze', formData);
+      // Use environment variable for API URL, fallback to local development URL
+      const apiUrl = import.meta.env.VITE_API_URL || '/api/analyze';
+      const res = await axios.post(apiUrl, formData);
       onResult(res.data);
     } catch (err) {
       console.error(err);
