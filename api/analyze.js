@@ -6,8 +6,14 @@ import Tesseract from 'tesseract.js';
 import jsQR from 'jsqr';
 import axios from 'axios';
 import sharp from 'sharp';
+import cors from 'cors'; // Add CORS import
 
 const app = express();
+// Add CORS middleware with configuration
+app.use(cors({
+  origin: process.env.ALLOWED_ORIGINS ? process.env.ALLOWED_ORIGINS.split(',') : '*',
+  credentials: true
+}));
 app.use(fileUpload());
 
 // Utility function to decode image buffer for QR detection
@@ -130,4 +136,5 @@ app.post('/api/analyze', async (req, res) => {
   }
 });
 
-app.listen(3007, () => console.log('API running on http://localhost:3007'));
+const PORT = process.env.PORT || 3007;
+app.listen(PORT, () => console.log(`API running on http://localhost:${PORT}`));
