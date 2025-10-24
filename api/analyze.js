@@ -41,6 +41,15 @@ async function decodeImageBuffer(buffer) {
 
 app.use(express.json());
 
+// Health check endpoint
+app.get('/health', (req, res) => {
+  res.status(200).json({ 
+    status: 'OK', 
+    timestamp: new Date().toISOString(),
+    uptime: process.uptime()
+  });
+});
+
 app.post('/api/analyze', async (req, res) => {
   if (!req.files || !req.files.image) return res.status(400).json({ error: 'No image uploaded' });
   const imageFile = req.files.image;
