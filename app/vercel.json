@@ -7,20 +7,13 @@
       "config": {
         "distDir": "dist"
       }
-    },
-    {
-      "src": "api/analyze.js",
-      "use": "@vercel/node"
     }
   ],
   "routes": [
     {
-      "src": "/api/analyze",
-      "dest": "/api/analyze.js"
-    },
-    {
       "src": "/(.*)",
       "dest": "/dist/$1"
     }
-  ]
+  ],
+  "outputDirectory": "dist"
 }
