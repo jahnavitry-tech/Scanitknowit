@@ -1,4 +1,3 @@
-import express from "express";
 import formidable from "formidable";
 import fs from "fs";
 import Tesseract from "tesseract.js";
@@ -6,13 +5,25 @@ import jsQR from "jsqr";
 import fetch from "node-fetch";
 import * as tf from "@tensorflow/tfjs-node";
 import * as mobilenet from "@tensorflow-models/mobilenet";
+import sharp from "sharp";
 
-const app = express();
-const PORT = 3007;
+export default async function handler(req, res) {
+  // Set CORS headers
+  res.setHeader("Access-Control-Allow-Origin", "*");
+  res.setHeader("Access-Control-Allow-Methods", "POST, OPTIONS");
+  res.setHeader("Access-Control-Allow-Headers", "Content-Type");
+  
+  // Handle preflight requests
+  if (req.method === "OPTIONS") {
+    res.status(200).end();
+    return;
+  }
+  
+  if (req.method !== "POST") {
+    res.status(405).json({ error: "Method not allowed" });
+    return;
+  }
 
-app.use(express.json());
-
-app.post("/api/analyze", async (req, res) => {
   const form = formidable({ multiples: false });
 
   form.parse(req, async (err, fields, files) => {
@@ -58,12 +69,17 @@ app.post("/api/analyze", async (req, res) => {
         }
       }
 
-      res.json({ results: results.sort((a, b) => b.confidence - a.confidence) });
+      res.status(200).json({ results: results.sort((a, b) => b.confidence - a.confidence) });
     } catch (err) {
       console.error(err);
       res.status(500).json({ error: "Failed to analyze image" });
+    } finally {
+      // Clean up temporary file
+      try {
+        fs.unlinkSync(file.filepath);
+      } catch (e) {
+        console.warn("Failed to clean up temporary file:", e);
+      }
     }
   });
-});
-
-app.listen(PORT, () => console.log(`API server running on http://localhost:${PORT}`));
+}
