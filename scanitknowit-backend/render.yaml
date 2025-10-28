@@ -1,0 +1,15 @@
+services:
+  - type: web
+    name: scanitknowit-backend
+    env: node
+    buildCommand: npm install
+    startCommand: npm start
+    envVars:
+      - key: PORT
+        value: 10000
+      - key: NODE_ENV
+        value: production
+      - key: UPCITEMDB_BASE_URL
+        value: https://api.upcitemdb.com/prod/trial
+      - key: USE_BLIP
+        value: "false"
