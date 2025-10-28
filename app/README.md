@@ -1,108 +1,115 @@
-# Google Lens-Style Product Scanner
+# Scan It Know It - Application Architecture and File Structure
 
-A fully functional product scanner that combines multiple recognition technologies to identify products, QR codes, text, and objects - similar to Google Lens.
+## Overview
 
-## 🌟 Features
+This application follows a client-server architecture where the frontend runs in the browser and communicates with serverless functions deployed on Vercel.
 
-- **QR Code Detection**: High-confidence QR/barcode scanning (0.95-0.99 confidence)
-- **OCR Text Recognition**: Extracts product names and text using Tesseract.js
-- **Image Captioning**: Optional AI-generated captions via Hugging Face BLIP (requires API token)
-- **File Upload**: Process uploaded images
-- **Ranked Results**: Merged and ranked results with confidence scoring
-- **Robust Error Handling**: Non-blocking processing ensures partial results even if some methods fail
+## Architecture Diagram
 
-## 🚀 Quick Start
-
-1. Install dependencies:
-   ```bash
-   npm install
-   ```
-
-2. Start the API server:
-   ```bash
-   node api/analyze.js
-   ```
-
-3. Start the frontend development server:
-   ```bash
-   npm run dev
-   ```
-
-4. Open your browser to `http://localhost:5186` (or the port shown in the terminal)
-
-## 🛠️ Environment Variables
-
-The application uses the following environment variables:
-
-```env
-# Hugging Face API token for BLIP image captioning (optional)
-HF_API_TOKEN=hf_xOuGQNnHJyxTIahVjmtlSwhoTZFhHnKQH
+```mermaid
+graph TB
+    A[User Browser] --> B[React Frontend]
+    B --> C[Tesseract.js OCR]
+    B --> D[Vercel Serverless Functions]
+    D --> E[OpenFoodFacts API]
+    D --> F[OpenBeautyFacts API]
+    D --> G[Wikidata SPARQL]
+    D --> H[Reddit API]
+    D --> I[Hugging Face Inference API]
 ```
 
-The HF_API_TOKEN is already configured in your `.env` file and will enable AI-generated captions for images.
+## Component Details
 
-## 📁 Project Structure
+### 1. React Frontend
+
+- **Location**: `/src`
+- **Framework**: React with JavaScript
+- **Styling**: Tailwind CSS
+- **OCR**: Tesseract.js (client-side)
+- **State Management**: React hooks
+
+### 2. Vercel Serverless Functions
+
+- **Location**: `/api`
+- **Runtime**: Node.js
+- **Deployment**: Automatic with Vercel
+
+#### API Endpoints
+
+| Endpoint | Method | Description |
+|----------|--------|-------------|
+| `/api/analyze` | POST | Analyzes uploaded image for QR codes, text, objects, and captions |
+
+### 3. Free/Open-Source APIs
+
+#### Product Data APIs
+
+- **OpenFoodFacts**: Food product data
+- **OpenBeautyFacts**: Cosmetic product data
+- **Wikidata**: General product information
+
+#### Community APIs
+
+- **Reddit**: User reviews and discussions
+
+#### AI APIs
+
+- **Hugging Face Inference**: Free tier for AI models
+
+## File Structure
 
 ```
-my-lens-scanner/
-├─ package.json
-├─ vite.config.js
-├─ index.html
-├─ .env
-├─ README.md
-├─ src/
-│  ├─ main.jsx
-│  ├─ App.jsx
-│  ├─ styles.css
-│  └─ components/
-│     ├─ CameraPanel.jsx
-│     └─ AnalysisPanel.jsx
-└─ api/
-   └─ analyze.js
+project-root/
+├── app/                      # Main application
+│   ├── src/                 # Frontend source code
+│   │   ├── components/      # React components
+│   │   │   ├── CameraPanel.jsx
+│   │   │   ├── AnalysisPanel.jsx
+│   │   │   └── App.jsx
+│   │   └── main.jsx         # Entry point
+│   ├── api/                 # API endpoints
+│   │   └── analyze.js       # Main analysis endpoint
+│   ├── dist/                # Built assets (generated)
+│   ├── vite.config.js       # Vite configuration
+│   ├── vercel.json          # Vercel configuration
+│   ├── package.json         # Dependencies and scripts
+│   └── .env                 # Environment variables
+├── scanitknowit-backend/    # Backend server (separate deployment)
+│   ├── server.js            # Main server file
+│   ├── .env.production      # Production environment variables
+│   └── render.yaml          # Render deployment configuration
+├── DEPLOYMENT.md            # Deployment process and checklist
+├── README.md                # This file (Application architecture and file structure)
+└── ERRORS_AND_FIXES.md      # Errors and fixes documentation
 ```
 
-## 🎯 How It Works
+## Data Flow
 
-1. **File Upload**: Users can upload images through the CameraPanel
-2. **Image Processing**: Converts images to blobs for analysis
-3. **Multi-Method Analysis**:
+1. User captures/upload image through CameraPanel
+2. Image is processed by multiple recognition methods:
    - QR codes detected with `jsQR` (highest priority, 0.95-0.99 confidence)
    - Text extracted with `tesseract.js`
+   - Objects recognized with TensorFlow.js MobileNet
    - Captions generated with Hugging Face BLIP (optional)
-4. **Results Merging**: All results are ranked by confidence and displayed
+3. Results are merged and ranked by confidence
+4. Results displayed in AnalysisPanel
 
-## 🧪 Testing
+## Deployment Architecture
 
-1. Open your browser and go to the URL shown in the terminal (likely `http://localhost:5186`)
-2. Click "Scan Now" to upload an image
-3. View the analysis results in the AnalysisPanel
+- **Frontend**: Static files served by Vercel
+- **Backend**: Serverless functions automatically scaled
+- **No databases**: All data fetched from external APIs
+- **No proprietary services**: All free/open-source
 
-## ✅ API Key Information
+## Benefits
 
-The only API key used in this application is for Hugging Face BLIP image captioning:
+- **No server costs**: Serverless functions only run when needed
+- **Free APIs**: No ongoing costs for data services
+- **Scalable**: Automatically scales with usage
+- **Global CDN**: Fast worldwide access
+- **Easy deployment**: One-click deploy to Vercel
 
-- **HF_API_TOKEN**: Enables AI-generated captions for images (like Google Lens descriptions)
-- This is completely optional - QR detection and OCR work without it
-- Your token is already configured in the `.env` file
-
-## 🛡️ Robust Error Handling
-
-The API has been enhanced with comprehensive error handling to prevent "Failed to analyze image" errors:
-
-- **File Validation**: Checks that uploaded files exist and are accessible
-- **Non-Blocking Processing**: If one recognition method fails, others continue
-- **Detailed Logging**: Each step is logged for debugging purposes
-- **Resource Management**: Temporary files are automatically cleaned up
-- **Cross-Platform Compatibility**: Works on Windows, macOS, and Linux
-
-## 📊 Result Ranking
-
-Results are ranked by confidence with the following priorities:
-1. **QR Codes**: 0.95-0.99 confidence (highest priority)
-2. **OCR Text**: 0.5-0.85 confidence
-3. **BLIP Captions**: 0.75 confidence (if enabled)
-
-## 🎨 UI Components
+## UI Components
 
 ### CameraPanel.jsx
 - Simple file upload interface
@@ -116,9 +123,31 @@ Results are ranked by confidence with the following priorities:
 - Icons for different result types
 - Responsive design for all screen sizes
 
-## 🚀 Deployment
+## API Key Information
 
-Deploy to Vercel with zero configuration.
+The only API key used in this application is for Hugging Face BLIP image captioning:
+
+- **HF_API_TOKEN**: Enables AI-generated captions for images (like Google Lens descriptions)
+- This is completely optional - QR detection and OCR work without it
+- Your token is configured in the `.env` file
+
+## Robust Error Handling
+
+The API has been enhanced with comprehensive error handling:
+
+- **File Validation**: Checks that uploaded files exist and are accessible
+- **Non-Blocking Processing**: If one recognition method fails, others continue
+- **Detailed Logging**: Each step is logged for debugging purposes
+- **Resource Management**: Temporary files are automatically cleaned up
+- **Cross-Platform Compatibility**: Works on Windows, macOS, and Linux
+
+## Result Ranking
+
+Results are ranked by confidence with the following priorities:
+1. **QR Codes**: 0.95-0.99 confidence (highest priority)
+2. **OCR Text**: 0.5-0.85 confidence
+3. **BLIP Captions**: 0.75 confidence (if enabled)
+4. **Object Recognition**: 0.3-0.6 confidence
 
 ## 🤝 Contributing
 

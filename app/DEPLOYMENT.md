@@ -1,4 +1,4 @@
-# Deployment Guide: Google Lens-Style Product Scanner
+# Deployment Process and Checklist
 
 ## ✅ Pre-Deployment Checklist
 
@@ -9,24 +9,27 @@
 - [x] Vercel configuration files updated
 - [x] Package.json scripts updated for cross-platform compatibility
 - [x] Vite configuration optimized for production
+- [x] Proper proxy configuration for local development
 
 ### 2. Dependencies Verification
 All required packages are listed in package.json:
-- `react`, `react-dom` - Frontend framework
-- `tesseract.js` - OCR processing
-- `jsqr` - QR code detection
-- `formidable` - Multipart form data parsing
-- `node-fetch` - HTTP requests
-- `@tensorflow/tfjs-node` - TensorFlow.js for Node.js
-- `@tensorflow-models/mobilenet` - Object recognition
 - `express` - API server framework
+- `formidable` - Multipart form data parsing
+- `jsqr` - QR code detection
+- `tesseract.js` - OCR processing
+- `sharp` - Image processing
+- `node-fetch` - HTTP requests
+- `jimp` - Alternative image processing
+- `framer-motion` - UI animations
+- `react`/`react-dom` - Frontend framework
+- `react-webcam` - Camera integration
 
 ### 3. API Functionality
 - [x] Camera capture and file upload working
-- [x] QR code detection with high priority (0.99 confidence)
+- [x] QR code detection with high priority (0.95-0.99 confidence)
 - [x] OCR text extraction with product name heuristics
 - [x] Object recognition (MobileNet via TensorFlow.js)
-- [x] Image captioning (BLIP via Hugging Face API - optional)
+- [x] Image captioning (BLIP via Hugging Face API)
 - [x] Merged and ranked results with confidence scoring
 - [x] Proper error handling for all recognition methods
 
@@ -42,30 +45,33 @@ All required packages are listed in package.json:
 
 ```
 project-root/
-├── src/                      # Frontend source code
-│   ├── components/          # React components
-│   │   ├── CameraPanel.jsx
-│   │   ├── AnalysisPanel.jsx
-│   │   └── App.jsx
-│   └── main.jsx             # Entry point
-├── api/                     # API endpoints
-│   └── analyze-simple.js    # Main analysis endpoint
-├── dist/                    # Built assets (generated)
-├── vite.config.js           # Vite configuration
-├── vercel.json              # Vercel configuration
-├── package.json             # Dependencies and scripts
-└── .env                     # Environment variables
+├── app/                      # Main application
+│   ├── src/                 # Frontend source code
+│   │   ├── components/      # React components
+│   │   │   ├── CameraPanel.jsx
+│   │   │   ├── AnalysisPanel.jsx
+│   │   │   └── App.jsx
+│   │   └── main.jsx         # Entry point
+│   ├── api/                 # API endpoints
+│   │   └── analyze.js       # Main analysis endpoint
+│   ├── dist/                # Built assets (generated)
+│   ├── vite.config.js       # Vite configuration
+│   ├── vercel.json          # Vercel configuration
+│   ├── package.json         # Dependencies and scripts
+│   └── .env.local           # Local environment variables
+└── DEPLOYMENT.md            # This file
 ```
 
 ## 🔧 Local Development Setup
 
 ### 1. Install Dependencies
 ```bash
+cd app
 npm install
 ```
 
 ### 2. Environment Setup
-Create a `.env` file in the root directory:
+Create a `.env.local` file in the `app/` directory:
 ```bash
 # Optional - for BLIP image captioning
 HF_API_TOKEN=your_hugging_face_api_token_here
@@ -74,13 +80,15 @@ HF_API_TOKEN=your_hugging_face_api_token_here
 ### 3. Start Development Servers
 ```bash
 # Terminal 1: Start frontend development server
+cd app
 npm run dev
 
-# Terminal 2: Start API server
-npm run api
+# Terminal 2: Start API server (if needed for local testing)
+cd app
+node api/analyze.js
 ```
 
-The frontend will run on http://localhost:5173 with API proxying to http://localhost:3007
+The frontend will run on http://localhost:5173 with API proxying to http://localhost:3006
 
 ## ☁️ Vercel Deployment
 
@@ -95,7 +103,7 @@ vercel login
 ```
 
 ### 3. Deploy to Vercel
-From the project root directory:
+From the `app/` directory:
 ```bash
 vercel --prod
 ```
@@ -156,6 +164,7 @@ vercel --prod
 
 ### 1. Image Processing
 - Images are automatically resized to reduce processing time
+- Sharp library used for efficient image manipulation
 - Formidable handles large file uploads safely
 
 ### 2. API Response Times
@@ -165,6 +174,7 @@ vercel --prod
 
 ### 3. Memory Management
 - TensorFlow tensors properly disposed after use
+- Jimp images cleaned up after processing
 - Formidable temporary files automatically removed
 
 ## 🔒 Security Considerations
@@ -216,4 +226,4 @@ npm update
 - Discord/Slack communities for real-time help
 
 ---
-*Deployment Guide Last Updated: October 23, 2025*
+*Deployment Process and Checklist Last Updated: October 28, 2025*
