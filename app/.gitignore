@@ -1,0 +1,7 @@
+.vercel
+eng.traineddata
+dist/
+node_modules/
+.env
+.env.local
+.env.production
