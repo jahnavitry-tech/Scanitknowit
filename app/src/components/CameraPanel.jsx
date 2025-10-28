@@ -6,21 +6,47 @@ const CameraPanel = ({ onAnalysisComplete }) => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
 
+  // Add image optimization function
+  const optimizeImage = (file) => {
+    return new Promise((resolve) => {
+      const img = new Image();
+      const url = URL.createObjectURL(file);
+      img.onload = () => {
+        const canvas = document.createElement('canvas');
+        const maxSize = 1024;
+        const ratio = Math.min(maxSize / img.width, maxSize / img.height, 1);
+        canvas.width = img.width * ratio;
+        canvas.height = img.height * ratio;
+        
+        const ctx = canvas.getContext('2d');
+        ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+        
+        canvas.toBlob((blob) => {
+          resolve(new File([blob], file.name, { type: 'image/jpeg' }));
+        }, 'image/jpeg', 0.85);
+      };
+      img.src = url;
+    });
+  };
+
   const handleFileChange = async (e) => {
     const file = e.target.files[0];
     if (!file) return;
     setError(null);
     setLoading(true);
-    setImagePreview(URL.createObjectURL(file));
+    
+    // Optimize image before upload
+    const optimizedFile = await optimizeImage(file);
+    setImagePreview(URL.createObjectURL(optimizedFile));
 
     const formData = new FormData();
-    formData.append("file", file);
+    formData.append("file", optimizedFile);
 
     try {
       // Use environment-aware API endpoint
-      const apiUrl = import.meta.env.DEV 
-        ? "http://localhost:3007/api/analyze" 
-        : "/api/analyze";
+      // In production, use the Render backend URL
+      const apiUrl = import.meta.env.VITE_API_URL || 
+        (import.meta.env.DEV ? "http://localhost:3000/api/analyze" : "/api/analyze");
       
       const response = await fetch(apiUrl, {
         method: "POST",
@@ -30,13 +56,17 @@ const CameraPanel = ({ onAnalysisComplete }) => {
       const data = await response.json();
       if (response.ok) {
         // Pass the results array directly
-        onAnalysisComplete(data.results);
+        onAnalysisComplete(data.results || [{ 
+          value: data.product || "Unknown Product", 
+          confidence: (data.confidence || 50) / 100,
+          source: "combined"
+        }]);
       } else {
         setError(data.error || "Failed to analyze image");
       }
     } catch (err) {
       console.error(err);
-      setError("Failed to analyze image");
+      setError("Failed to analyze image: " + err.message);
     } finally {
       setLoading(false);
     }

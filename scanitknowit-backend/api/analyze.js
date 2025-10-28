@@ -65,15 +65,16 @@ router.post("/analyze", upload.single("image"), async (req, res) => {
       candidates: [] // Store all candidates for better decision making
     };
 
-    // OCR text recognition
+    // Run OCR first (needed for UPC lookup)
+    let ocrResult = null;
     try {
       console.log('Attempting OCR...');
       const ocr = await Tesseract.recognize(imageBuffer, 'eng', {
         logger: info => console.log('OCR progress:', info)
       });
       
-      const rawText = ocr.data.text.trim();
-      result.text = rawText;
+      ocrResult = { text: ocr.data.text.trim() };
+      result.text = ocrResult.text;
       
       console.log('OCR completed, text length:', result.text.length);
       console.log('Raw text:', result.text);
@@ -81,97 +82,128 @@ router.post("/analyze", upload.single("image"), async (req, res) => {
       console.warn('OCR failed:', err.message);
     }
 
-    // UPC lookup using free UPCitemdb API
-    try {
-      if (result.text) {
-        console.log('Attempting UPC lookup...');
-        const upcCode = extractUPC(result.text);
-        if (upcCode) {
-          console.log('Found potential UPC code:', upcCode);
-          const upcItem = await lookupUPC(upcCode);
-          if (upcItem) {
-            result.candidates.push({ 
-              source: 'upc', 
-              value: upcItem.title || upcItem.product_name || 'Unknown Product', 
-              confidence: 90 
-            });
-            console.log('UPC lookup successful:', upcItem.title);
+    // Run all other analysis methods in parallel
+    const [upcResult, objectResult, blipResult] = await Promise.allSettled([
+      // UPC lookup (depends on OCR)
+      (async () => {
+        try {
+          if (ocrResult && ocrResult.text) {
+            console.log('Attempting UPC lookup...');
+            const upcCode = extractUPC(ocrResult.text);
+            if (upcCode) {
+              console.log('Found potential UPC code:', upcCode);
+              const upcItem = await lookupUPC(upcCode);
+              if (upcItem) {
+                console.log('UPC lookup successful:', upcItem.title);
+                return { item: upcItem, code: upcCode };
+              }
+            }
+          }
+          return null;
+        } catch (err) {
+          console.warn('UPC lookup failed:', err.message);
+          return null;
+        }
+      })(),
+      
+      // Object recognition
+      (async () => {
+        try {
+          // Use the HF_API_TOKEN from environment variables
+          const hfToken = process.env.HF_API_TOKEN;
+          
+          if (hfToken) {
+            console.log('Attempting object recognition with HuggingFace...');
+            const hfRes = await axios.post(
+              'https://api-inference.huggingface.co/models/google/vit-base-patch16-224',
+              imageBuffer,
+              {
+                headers: {
+                  Authorization: `Bearer ${hfToken}`,
+                  'Content-Type': 'application/octet-stream'
+                }
+              }
+            );
+            if (hfRes.data && hfRes.data.length) {
+              return {
+                label: hfRes.data[0].label,
+                confidence: (hfRes.data[0].score * 100).toFixed(1)
+              };
+            }
           } else {
-            console.log('No product found for UPC:', upcCode);
+            console.log('No HF_API_TOKEN provided, skipping object recognition');
           }
-        } else {
-          console.log('No UPC code found in text');
+          return null;
+        } catch (err) {
+          console.warn('Object recognition failed:', err.message);
+          return null;
         }
-      }
-    } catch (err) {
-      console.warn('UPC lookup failed:', err.message);
-    }
-
-    // Object recognition - only if token is provided
-    try {
-      // Use the HF_API_TOKEN from environment variables
-      const hfToken = process.env.HF_API_TOKEN;
+      })(),
       
-      if (hfToken) {
-        console.log('Attempting object recognition with HuggingFace...');
-        const hfRes = await axios.post(
-          'https://api-inference.huggingface.co/models/google/vit-base-patch16-224',
-          imageBuffer,
-          {
-            headers: {
-              Authorization: `Bearer ${hfToken}`,
-              'Content-Type': 'application/octet-stream'
+      // BLIP caption
+      (async () => {
+        try {
+          // Use the HF_API_TOKEN from environment variables
+          const hfToken = process.env.HF_API_TOKEN;
+          const useBlip = process.env.USE_BLIP === 'true';
+          
+          if (useBlip && hfToken) {
+            console.log('Attempting BLIP caption generation...');
+            const blipRes = await axios.post(
+              'https://api-inference.huggingface.co/models/Salesforce/blip-image-captioning-base',
+              imageBuffer,
+              {
+                headers: {
+                  Authorization: `Bearer ${hfToken}`,
+                  'Content-Type': 'application/octet-stream'
+                }
+              }
+            );
+            if (blipRes.data && blipRes.data[0]?.generated_text) {
+              return { caption: blipRes.data[0].generated_text };
             }
+          } else if (!hfToken) {
+            console.log('No HF_API_TOKEN provided, skipping BLIP caption generation');
           }
-        );
-        if (hfRes.data && hfRes.data.length) {
-          result.object = hfRes.data[0].label;
-          result.confidence = (hfRes.data[0].score * 100).toFixed(1);
-          result.candidates.push({ 
-            source: 'object', 
-            value: hfRes.data[0].label, 
-            confidence: parseFloat(result.confidence) 
-          });
-          console.log('Object detected:', result.object, 'with confidence:', result.confidence);
+          return null;
+        } catch (err) {
+          console.warn('BLIP caption failed:', err.message);
+          return null;
         }
-      } else {
-        console.log('No HF_API_TOKEN provided, skipping object recognition');
-      }
-    } catch (err) {
-      console.warn('Object recognition failed:', err.message);
+      })()
+    ]);
+
+    // Process results
+    if (upcResult.status === 'fulfilled' && upcResult.value) {
+      const upcItem = upcResult.value.item;
+      result.candidates.push({ 
+        source: 'upc', 
+        value: upcItem.title || upcItem.product_name || 'Unknown Product', 
+        confidence: 90 
+      });
+    }
+    
+    if (objectResult.status === 'fulfilled' && objectResult.value) {
+      const obj = objectResult.value;
+      result.object = obj.label;
+      result.confidence = obj.confidence;
+      result.candidates.push({ 
+        source: 'object', 
+        value: obj.label, 
+        confidence: parseFloat(obj.confidence) 
+      });
+    }
+    
+    if (blipResult.status === 'fulfilled' && blipResult.value) {
+      result.caption = blipResult.value.caption;
+      result.candidates.push({ 
+        source: 'caption', 
+        value: blipResult.value.caption, 
+        confidence: 75 
+      });
     }
 
-    // Optional BLIP caption - only if token is provided and enabled
-    try {
-      // Use the HF_API_TOKEN from environment variables
-      const hfToken = process.env.HF_API_TOKEN;
-      const useBlip = process.env.USE_BLIP === 'true';
-      
-      if (useBlip && hfToken) {
-        console.log('Attempting BLIP caption generation...');
-        const blipRes = await axios.post(
-          'https://api-inference.huggingface.co/models/Salesforce/blip-image-captioning-base',
-          imageBuffer,
-          {
-            headers: {
-              Authorization: `Bearer ${hfToken}`,
-              'Content-Type': 'application/octet-stream'
-            }
-          }
-        );
-        if (blipRes.data && blipRes.data[0]?.generated_text) {
-          result.caption = blipRes.data[0].generated_text;
-          result.candidates.push({ source: 'caption', value: blipRes.data[0].generated_text, confidence: 75 });
-          console.log('Caption generated:', result.caption);
-        }
-      } else if (!hfToken) {
-        console.log('No HF_API_TOKEN provided, skipping BLIP caption generation');
-      }
-    } catch (err) {
-      console.warn('BLIP caption failed:', err.message);
-    }
-
-    // Final product name selection: UPC > OCR text > object
+    // Final product name selection
     if (result.candidates.length > 0) {
       // Sort by confidence (highest first)
       result.candidates.sort((a, b) => b.confidence - a.confidence);
@@ -190,6 +222,26 @@ router.post("/analyze", upload.single("image"), async (req, res) => {
     }
 
     console.log('Analysis completed successfully');
+    
+    // Add timestamp for caching
+    result.timestamp = Date.now();
+    
+    // Save to cache if imageHash is available
+    if (req.imageHash) {
+      // Create a copy of the result for caching
+      const cachedResult = { ...result };
+      
+      // Set cache expiration
+      setTimeout(() => {
+        global.analysisCache.delete(req.imageHash);
+      }, 60 * 60 * 1000); // 1 hour
+      
+      // Save to cache (if global.analysisCache is available)
+      if (global.analysisCache) {
+        global.analysisCache.set(req.imageHash, cachedResult);
+      }
+    }
+    
     res.json(result);
   } catch (err) {
     console.error('Analysis failed:', err);
