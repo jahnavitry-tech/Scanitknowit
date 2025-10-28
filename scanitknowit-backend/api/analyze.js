@@ -1,251 +1,126 @@
-const express = require("express");
-const multer = require("multer");
-const axios = require("axios");
-const Tesseract = require("tesseract.js");
-
+const express = require('express');
+const multer = require('multer');
+const crypto = require('crypto');
+const axios = require('axios');
+const Tesseract = require('tesseract.js'); // server variant may vary
 const router = express.Router();
 const upload = multer();
 
-// UPC lookup function using free UPCitemdb API
-async function lookupUPC(upc) {
-  try {
-    // Use the trial endpoint (no API key required)
-    const baseURL = process.env.UPCITEMDB_BASE_URL || 'https://api.upcitemdb.com/prod/trial';
-    const response = await axios.get(`${baseURL}/lookup?upc=${upc}`);
-    
-    if (response.data && response.data.items && response.data.items.length > 0) {
-      return response.data.items[0]; // Return the first item found
-    }
-    return null;
-  } catch (err) {
-    console.warn('UPC lookup failed:', err.message);
-    return null;
-  }
+const OPENFOODFACTS_URL = 'https://world.openfoodfacts.org/api/v0/product'; // +/<barcode>.json
+const OPENBEAUTY_URL = 'https://world.openbeautyfacts.org/api/v0/product';
+
+const analysisCache = new Map();
+const CACHE_TTL = parseInt(process.env.CACHE_TTL_MS || '3600000');
+
+function md5(buffer) { return crypto.createHash('md5').update(buffer).digest('hex'); }
+
+// helper: extract UPC-like numbers from text
+function extractBarcodes(text) {
+  if (!text) return [];
+  const matches = Array.from(text.matchAll(/\b(\d{8,13})\b/g)).map(m => m[1]);
+  return [...new Set(matches)];
 }
 
-// Extract potential UPC codes from text
-function extractUPC(text) {
+// helper: basic OCR line heuristics to pick product-like lines
+function preferProductLines(text) {
   if (!text) return null;
-  
-  // Regular expressions for different barcode formats
-  const upcPatterns = [
-    /\b(\d{12})\b/,     // Standard UPC-A (12 digits)
-    /\b(\d{13})\b/,     // EAN-13 (13 digits)
-    /\b(\d{8})\b/       // EAN-8 (8 digits)
-  ];
-  
-  for (const pattern of upcPatterns) {
-    const match = text.match(pattern);
-    if (match) {
-      return match[1]; // Return the captured group
-    }
+  const lines = text.split('\n').map(l => l.trim()).filter(Boolean);
+  // prefer lines with uppercase brand-like tokens or long tokens
+  const candidates = lines.filter(l => /[A-Z]{2,}/.test(l) || l.split(' ').length <= 6 && l.length > 3);
+  return candidates.length ? candidates[0] : (lines[0] || null);
+}
+
+async function lookupBarcode(barcode) {
+  try {
+    let res = await axios.get(`${OPENFOODFACTS_URL}/${barcode}.json`, { timeout: 5000 });
+    if (res.data && res.data.status === 1) return res.data.product;
+    res = await axios.get(`${OPENBEAUTY_URL}/${barcode}.json`, { timeout: 5000 });
+    if (res.data && res.data.status === 1) return res.data.product;
+  } catch (err) {
+    // ignore timeout/error, return null
   }
-  
   return null;
 }
 
-router.post("/analyze", upload.single("image"), async (req, res) => {
+router.post('/analyze', upload.single('file'), async (req, res) => {
   try {
-    // Validate input
-    if (!req.file) {
-      return res.status(400).json({ error: 'No image uploaded' });
+    if (!req.file) return res.status(400).json({ error: 'Missing file' });
+
+    const buf = req.file.buffer;
+    const key = md5(buf);
+    if (analysisCache.has(key)) {
+      const cached = analysisCache.get(key);
+      if (Date.now() - cached.ts < CACHE_TTL) return res.json({ ...cached.data, cached: true });
+      analysisCache.delete(key);
     }
 
-    const imageBuffer = req.file.buffer;
+    // Run OCR first (needed for barcode extraction) but still do in parallel with others
+    const ocrPromise = Tesseract.recognize(buf, 'eng', { logger: () => {} })
+      .then(r => r?.data?.text || '')
+      .catch(() => '');
 
-    console.log('Received image for analysis, size:', imageBuffer.length, 'bytes');
+    // Parallel object classification / captioning (conditional on HF token)
+    const hfToken = process.env.HF_API_TOKEN;
+    const objectPromise = hfToken ? axios.post('https://api-inference.huggingface.co/models/google/vit-base-patch16-224', buf, {
+      headers: { Authorization: `Bearer ${hfToken}`, 'Content-Type':'application/octet-stream' }, timeout: 10000
+    }).then(r => r.data).catch(() => null) : Promise.resolve(null);
 
-    let result = {
-      product: null,
-      object: null,
-      qr: null,
-      text: null,
-      caption: null,
-      confidence: null,
-      candidates: [] // Store all candidates for better decision making
-    };
+    const blipPromise = hfToken && process.env.USE_BLIP === 'true' ? axios.post('https://api-inference.huggingface.co/models/Salesforce/blip-image-captioning-base', buf, {
+      headers: { Authorization: `Bearer ${hfToken}`, 'Content-Type':'application/octet-stream' }, timeout: 15000
+    }).then(r => r.data).catch(() => null) : Promise.resolve(null);
 
-    // Run OCR first (needed for UPC lookup)
-    let ocrResult = null;
-    try {
-      console.log('Attempting OCR...');
-      const ocr = await Tesseract.recognize(imageBuffer, 'eng', {
-        logger: info => console.log('OCR progress:', info)
-      });
-      
-      ocrResult = { text: ocr.data.text.trim() };
-      result.text = ocrResult.text;
-      
-      console.log('OCR completed, text length:', result.text.length);
-      console.log('Raw text:', result.text);
-    } catch (err) {
-      console.warn('OCR failed:', err.message);
-    }
+    const [ocrText, objectRes, blipRes] = await Promise.all([ocrPromise, objectPromise, blipPromise]);
 
-    // Run all other analysis methods in parallel
-    const [upcResult, objectResult, blipResult] = await Promise.allSettled([
-      // UPC lookup (depends on OCR)
-      (async () => {
-        try {
-          if (ocrResult && ocrResult.text) {
-            console.log('Attempting UPC lookup...');
-            const upcCode = extractUPC(ocrResult.text);
-            if (upcCode) {
-              console.log('Found potential UPC code:', upcCode);
-              const upcItem = await lookupUPC(upcCode);
-              if (upcItem) {
-                console.log('UPC lookup successful:', upcItem.title);
-                return { item: upcItem, code: upcCode };
-              }
-            }
-          }
-          return null;
-        } catch (err) {
-          console.warn('UPC lookup failed:', err.message);
-          return null;
-        }
-      })(),
-      
-      // Object recognition
-      (async () => {
-        try {
-          // Use the HF_API_TOKEN from environment variables
-          const hfToken = process.env.HF_API_TOKEN;
-          
-          if (hfToken) {
-            console.log('Attempting object recognition with HuggingFace...');
-            const hfRes = await axios.post(
-              'https://api-inference.huggingface.co/models/google/vit-base-patch16-224',
-              imageBuffer,
-              {
-                headers: {
-                  Authorization: `Bearer ${hfToken}`,
-                  'Content-Type': 'application/octet-stream'
-                }
-              }
-            );
-            if (hfRes.data && hfRes.data.length) {
-              return {
-                label: hfRes.data[0].label,
-                confidence: (hfRes.data[0].score * 100).toFixed(1)
-              };
-            }
-          } else {
-            console.log('No HF_API_TOKEN provided, skipping object recognition');
-          }
-          return null;
-        } catch (err) {
-          console.warn('Object recognition failed:', err.message);
-          return null;
-        }
-      })(),
-      
-      // BLIP caption
-      (async () => {
-        try {
-          // Use the HF_API_TOKEN from environment variables
-          const hfToken = process.env.HF_API_TOKEN;
-          const useBlip = process.env.USE_BLIP === 'true';
-          
-          if (useBlip && hfToken) {
-            console.log('Attempting BLIP caption generation...');
-            const blipRes = await axios.post(
-              'https://api-inference.huggingface.co/models/Salesforce/blip-image-captioning-base',
-              imageBuffer,
-              {
-                headers: {
-                  Authorization: `Bearer ${hfToken}`,
-                  'Content-Type': 'application/octet-stream'
-                }
-              }
-            );
-            if (blipRes.data && blipRes.data[0]?.generated_text) {
-              return { caption: blipRes.data[0].generated_text };
-            }
-          } else if (!hfToken) {
-            console.log('No HF_API_TOKEN provided, skipping BLIP caption generation');
-          }
-          return null;
-        } catch (err) {
-          console.warn('BLIP caption failed:', err.message);
-          return null;
-        }
-      })()
-    ]);
-
-    // Process results
-    if (upcResult.status === 'fulfilled' && upcResult.value) {
-      const upcItem = upcResult.value.item;
-      result.candidates.push({ 
-        source: 'upc', 
-        value: upcItem.title || upcItem.product_name || 'Unknown Product', 
-        confidence: 90 
-      });
-    }
-    
-    if (objectResult.status === 'fulfilled' && objectResult.value) {
-      const obj = objectResult.value;
-      result.object = obj.label;
-      result.confidence = obj.confidence;
-      result.candidates.push({ 
-        source: 'object', 
-        value: obj.label, 
-        confidence: parseFloat(obj.confidence) 
-      });
-    }
-    
-    if (blipResult.status === 'fulfilled' && blipResult.value) {
-      result.caption = blipResult.value.caption;
-      result.candidates.push({ 
-        source: 'caption', 
-        value: blipResult.value.caption, 
-        confidence: 75 
-      });
-    }
-
-    // Final product name selection
-    if (result.candidates.length > 0) {
-      // Sort by confidence (highest first)
-      result.candidates.sort((a, b) => b.confidence - a.confidence);
-      
-      // Select the best candidate
-      result.product = result.candidates[0].value;
-      result.confidence = result.candidates[0].confidence;
-      console.log('Selected product name:', result.product, 'with confidence:', result.confidence);
-    } else if (result.text) {
-      // Fallback to first line of OCR text
-      result.product = result.text.split('\n')[0] || 'Unknown';
-      result.confidence = 50;
-    } else {
-      result.product = result.object || 'Unknown';
-      result.confidence = result.object ? 70 : 0;
-    }
-
-    console.log('Analysis completed successfully');
-    
-    // Add timestamp for caching
-    result.timestamp = Date.now();
-    
-    // Save to cache if imageHash is available
-    if (req.imageHash) {
-      // Create a copy of the result for caching
-      const cachedResult = { ...result };
-      
-      // Set cache expiration
-      setTimeout(() => {
-        global.analysisCache.delete(req.imageHash);
-      }, 60 * 60 * 1000); // 1 hour
-      
-      // Save to cache (if global.analysisCache is available)
-      if (global.analysisCache) {
-        global.analysisCache.set(req.imageHash, cachedResult);
+    // Extract barcode(s)
+    const barcodes = extractBarcodes(ocrText || '');
+    let barcodeInfo = null;
+    if (barcodes.length) {
+      // try first barcode lookups in order
+      for (const code of barcodes) {
+        const product = await lookupBarcode(code);
+        if (product) { barcodeInfo = { code, product }; break; }
       }
     }
-    
-    res.json(result);
-  } catch (err) {
-    console.error('Analysis failed:', err);
-    res.status(500).json({ error: 'Failed to analyze image', details: err.message });
+
+    // Candidate merging & scoring
+    const candidates = [];
+    if (barcodeInfo) {
+      candidates.push({ source: 'barcode', value: barcodeInfo.product?.product_name || barcodeInfo.product?.name || barcodeInfo.code, confidence: 0.95 });
+    }
+
+    const ocrCandidate = preferProductLines(ocrText);
+    if (ocrCandidate) candidates.push({ source: 'ocr', value: ocrCandidate, confidence: 0.6 });
+
+    if (objectRes && Array.isArray(objectRes) && objectRes[0]) {
+      const label = objectRes[0].label || (objectRes[0].class || '');
+      const score = objectRes[0]?.score ? Math.min(0.9, objectRes[0].score) : 0.5;
+      candidates.push({ source: 'object', value: label, confidence: score });
+    }
+
+    if (blipRes && Array.isArray(blipRes) && blipRes[0]) {
+      const caption = blipRes[0].generated_text || blipRes[0].caption || '';
+      candidates.push({ source: 'caption', value: caption, confidence: 0.5 });
+    }
+
+    // sort cand and pick winner
+    candidates.sort((a,b) => b.confidence - a.confidence);
+    const product = candidates.length ? candidates[0].value : (ocrText.split('\n')[0] || 'Unknown');
+
+    const out = {
+      product,
+      candidates,
+      raw: { ocr: ocrText, object: objectRes, blip: blipRes },
+      barcodes
+    };
+
+    // cache
+    analysisCache.set(key, { data: out, ts: Date.now() });
+    setTimeout(() => analysisCache.delete(key), CACHE_TTL);
+
+    res.json(out);
+  } catch(err) {
+    console.error('analyze error', err.message || err);
+    res.status(500).json({ error: 'internal' });
   }
 });
 
