@@ -14,5 +14,6 @@
       "src": "/(.*)",
       "dest": "/app/dist/$1"
     }
-  ]
+  ],
+  "outputDirectory": "app/dist"
 }
